@@ -43,13 +43,6 @@ static UIColor *sGetRGBColor(int rgb, CGFloat alpha)
 }
 
 
-static inline CGFLOAT_TYPE sScaleRound(CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
-{
-    if (!scaleFactor) scaleFactor = sGetScaleFactor();
-    return round(x * scaleFactor) / scaleFactor;
-}
-
-
 static inline CGFLOAT_TYPE sScaleFloor(CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
 {
     if (!scaleFactor) scaleFactor = sGetScaleFactor();
@@ -108,7 +101,6 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
 
     NSArray      *_choiceViews;
     NSInteger     _numberOfChoices;
-    CGFloat       _pointsPerChoice;
     NSInteger     _selectedIndex;
     
     NSInteger     _frontIndex;
@@ -208,12 +200,14 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
         [self _reload];
     }
 
-    [_frontContainer setFrame:CGRectMake((selfBounds.size.width / 2) - (_pointsPerChoice / 2), 0, _pointsPerChoice, selfBounds.size.height)];
+    CGFloat pointsPerChoice = [self _pointsPerChoice];
+
+    [_frontContainer setFrame:CGRectMake((selfBounds.size.width / 2) - (pointsPerChoice / 2), 0, pointsPerChoice, selfBounds.size.height)];
     
     CGRect tapeBounds = UIEdgeInsetsInsetRect(selfBounds, UIEdgeInsetsZero);
     
-    CGFloat width = _pointsPerChoice * _numberOfChoices;
-    CGFloat extraSpace = round((selfBounds.size.width - _pointsPerChoice) / 2.0);
+    CGFloat width = pointsPerChoice * _numberOfChoices;
+    CGFloat extraSpace = round((selfBounds.size.width - pointsPerChoice) / 2.0);
 
     [_scrollView setFrame:tapeBounds];
     [_scrollView setContentSize:CGSizeMake(width, tapeBounds.size.height)];
@@ -222,8 +216,8 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
 
     CGFloat scale  = [[UIScreen mainScreen] scale];
     CGRect lineFrame = CGRectMake(0, 0, 1.0 / scale, selfBounds.size.height);
-    CGFloat leftX  = sScaleCeil( (selfBounds.size.width / 2) - (_pointsPerChoice / 2), scale);
-    CGFloat rightX = sScaleFloor((selfBounds.size.width / 2) + (_pointsPerChoice / 2), scale);
+    CGFloat leftX  = sScaleCeil( (selfBounds.size.width / 2) - (pointsPerChoice / 2), scale);
+    CGFloat rightX = sScaleFloor((selfBounds.size.width / 2) + (pointsPerChoice / 2), scale);
     
     lineFrame.origin.x = leftX;
     [_coverLeftLine  setFrame:lineFrame];
@@ -237,10 +231,18 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
 
 #pragma mark - Private Methods
 
+- (CGFloat) _pointsPerChoice
+{
+    // '4.3' looks good for both 320 and 1024 pixels across.  I'm sure there is a proper
+    // math way of determining this ;)
+    //
+    return [self bounds].size.width / 4.3;
+}
+
+
 - (void) _reload
 {
     _numberOfChoices = [_delegate numberOfChoicesInPickerView:self];
-    _pointsPerChoice = [_delegate pointsPerChoiceInPickerView:self];
 
     NSMutableArray *choiceViews = [NSMutableArray arrayWithCapacity:_numberOfChoices];
 
@@ -275,6 +277,8 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
 
     CGFloat xOffset = [_scrollView contentOffset].x + [_scrollView contentInset].left;
 
+    CGFloat pointsPerChoice = [self _pointsPerChoice];
+
     static CGFloat sWheelSegmentCount   = 12;
     static CGFloat sWheelSegmentSpacing = 0.9;
     static CGFloat sWheelSegmentVisible = 3;    // How many segments are visible to the left/right of 0
@@ -295,7 +299,7 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
     };
 
     void (^updateChoiceView)(HorizontalPickerChoiceView *, NSInteger) = ^(HorizontalPickerChoiceView *choiceView, NSInteger index) {
-        CGFloat offset = index - (xOffset / _pointsPerChoice);
+        CGFloat offset = index - (xOffset / pointsPerChoice);
 
         if ((offset < -sWheelSegmentVisible) || (offset > sWheelSegmentVisible)) {
             [choiceView setHidden:YES];
@@ -324,7 +328,7 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
         CALayer *layer = [frontView layer];
 
         if (index < _numberOfChoices && index >= 0) {
-            CGFloat offset = (index * _pointsPerChoice) - xOffset;
+            CGFloat offset = (index * pointsPerChoice) - xOffset;
             offset -= [_frontContainer frame].origin.x;
             
             HorizontalPickerChoiceView *source = [_choiceViews objectAtIndex:index];
@@ -357,7 +361,8 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
 
 - (CGFloat) _contentOffsetXForIndex:(NSInteger)index
 {
-    return (index * _pointsPerChoice) - [_scrollView contentInset].left;
+    CGFloat pointsPerChoice = [self _pointsPerChoice];
+    return (index * pointsPerChoice) - [_scrollView contentInset].left;
 }
 
 
@@ -374,13 +379,15 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
 
 - (void) scrollViewDidScroll:(UIScrollView *)scrollView
 {
+    CGFloat pointsPerChoice = [self _pointsPerChoice];
+
     CGFloat   x     = [scrollView contentOffset].x;
-    NSInteger index = round((x  + [scrollView contentInset].left) / _pointsPerChoice);
+    NSInteger index = round((x  + [scrollView contentInset].left) / pointsPerChoice);
 
     if      (index < 0)                 index = 0;
     else if (index >= _numberOfChoices) index = (_numberOfChoices - 1);
     
-    _frontIndex = floor((x  + [scrollView contentInset].left) / _pointsPerChoice);
+    _frontIndex = floor((x  + [scrollView contentInset].left) / pointsPerChoice);
 
     BOOL sendValueChanged = NO;
 
@@ -402,7 +409,7 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
                targetContentOffset: (inout CGPoint *) targetContentOffset
 {
     CGFloat   x     = targetContentOffset->x;
-    NSInteger index = round((x  + [scrollView contentInset].left) / _pointsPerChoice);
+    NSInteger index = round((x  + [scrollView contentInset].left) / [self _pointsPerChoice]);
 
     if      (index < 0)                 index = 0;
     else if (index >= _numberOfChoices) index = (_numberOfChoices - 1);

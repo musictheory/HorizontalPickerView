@@ -90,12 +90,6 @@ static UIImage *sMakeImage(CGSize size, BOOL opaque, CGFloat scale, void (^callb
 }
 
 
-- (CGFloat) pointsPerChoiceInPickerView:(HorizontalPickerView *)pickerView
-{
-    return 72;
-}
-
-
 - (UIImage *) pickerView:(HorizontalPickerView *)pickerView imageForChoiceAtIndex:(NSInteger)index
 {
     return sMakeImage(CGSizeMake(64, 64), 0, NO, ^(CGContextRef context) {

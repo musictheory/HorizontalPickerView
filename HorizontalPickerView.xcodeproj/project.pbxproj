@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		555C52581A1861D5001EB678 /* Launch.xib in Resources */ = {isa = PBXBuildFile; fileRef = 555C52571A1861D5001EB678 /* Launch.xib */; };
 		55F4B00818599DF000904476 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 55F4B00718599DF000904476 /* Foundation.framework */; };
 		55F4B00A18599DF000904476 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 55F4B00918599DF000904476 /* CoreGraphics.framework */; };
 		55F4B00C18599DF000904476 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 55F4B00B18599DF000904476 /* UIKit.framework */; };
@@ -18,6 +19,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		555C52571A1861D5001EB678 /* Launch.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; name = Launch.xib; path = Resources/Launch.xib; sourceTree = SOURCE_ROOT; };
 		55F4B00418599DF000904476 /* HorizontalPickerView.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HorizontalPickerView.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		55F4B00718599DF000904476 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		55F4B00918599DF000904476 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };

@@ -37,7 +37,6 @@
 
 @protocol HorizontalPickerViewDelegate <NSObject>
 - (NSInteger) numberOfChoicesInPickerView:(HorizontalPickerView *)pickerView;
-- (CGFloat) pointsPerChoiceInPickerView:(HorizontalPickerView *)pickerView;
 - (UIImage *) pickerView:(HorizontalPickerView *)pickerView imageForChoiceAtIndex:(NSInteger)index;
 @end
 
