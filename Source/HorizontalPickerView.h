@@ -1,6 +1,5 @@
 /*
-    Copyright (c) 2013, musictheory.net, LLC
-    All rights reserved.
+    Copyright (c) 2013-2014, musictheory.net, LLC
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following condition is met:

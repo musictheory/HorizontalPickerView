@@ -1,6 +1,5 @@
 /*
-    Copyright (c) 2013, musictheory.net, LLC
-    All rights reserved.
+    Copyright (c) 2013-2014, musictheory.net, LLC
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following condition is met:
@@ -75,6 +74,12 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
 }
 
 
+- (void) setNeedsDisplay
+{
+    [[self layer] setNeedsDisplay];
+}
+
+
 - (void) displayLayer:(CALayer *)layer
 {
     HorizontalPickerView *picker = _owningPickerView;
@@ -82,6 +87,7 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
     
     [layer setContentsScale:[image scale]];
     [layer setContents:(id)[image CGImage]];
+    [layer setContentsGravity:kCAGravityCenter];
     [layer setAnchorPoint:CGPointMake(0.5, 0.5)];
     [layer setDoubleSided:NO];
 }
@@ -106,8 +112,8 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
     NSInteger     _frontIndex;
     BOOL          _needsReload;
 
-    UIView       *_frontLeftView;
-    UIView       *_frontRightView;
+    HorizontalPickerChoiceView *_frontLeftView;
+    HorizontalPickerChoiceView *_frontRightView;
 
     UIView       *_coverLeftLine;
     UIView       *_coverRightLine;
@@ -138,14 +144,14 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
     _coverRightLine = [[UIView alloc] initWithFrame:CGRectZero];
     [self addSubview:_coverRightLine];
     
-    _frontLeftView = [[UIView alloc] initWithFrame:CGRectZero];
-    [_frontLeftView setContentMode:UIViewContentModeCenter];
+    _frontLeftView = [[HorizontalPickerChoiceView alloc] initWithFrame:CGRectZero];
     [_frontLeftView setUserInteractionEnabled:NO];
+    [_frontLeftView setOwningPickerView:self];
     [_frontContainer addSubview:_frontLeftView];
 
-    _frontRightView = [[UIView alloc] initWithFrame:CGRectZero];
-    [_frontRightView setContentMode:UIViewContentModeCenter];
+    _frontRightView = [[HorizontalPickerChoiceView alloc] initWithFrame:CGRectZero];
     [_frontRightView setUserInteractionEnabled:NO];
+    [_frontRightView setOwningPickerView:self];
     [_frontContainer addSubview:_frontRightView];
     
     [_coverLeftLine  setBackgroundColor:sGetRGBColor(0xc8c7cc, 1.0)];
@@ -193,11 +199,15 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
     
     CGRect selfBounds = [self bounds];
     
-    [_scrollView setFrame:selfBounds];
+    NSInteger savedSelectedIndex = _selectedIndex;
+    NSInteger savedFrontIndex    = _frontIndex;
+
+    [_scrollView    setFrame:selfBounds];
     [_backContainer setFrame:selfBounds];
     
     if (_needsReload) {
         [self _reload];
+        _needsReload = NO;
     }
 
     CGFloat pointsPerChoice = [self _pointsPerChoice];
@@ -212,7 +222,7 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
     [_scrollView setFrame:tapeBounds];
     [_scrollView setContentSize:CGSizeMake(width, tapeBounds.size.height)];
     [_scrollView setContentInset:UIEdgeInsetsMake(0, extraSpace, 0, extraSpace)];
-    [_scrollView setContentOffset:CGPointMake([self _contentOffsetXForIndex:_selectedIndex], 0)];
+    [_scrollView setContentOffset:CGPointMake([self _contentOffsetXForIndex:savedSelectedIndex], 0) animated:NO];
 
     CGFloat scale  = [[UIScreen mainScreen] scale];
     CGRect lineFrame = CGRectMake(0, 0, 1.0 / scale, selfBounds.size.height);
@@ -225,6 +235,7 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
     lineFrame.origin.x = rightX;
     [_coverRightLine setFrame:lineFrame];
     
+    _frontIndex = savedFrontIndex;
     [self _updateSublayers];
 }
 
@@ -249,9 +260,9 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
     for (NSInteger i = 0; i < _numberOfChoices; i++) {
         HorizontalPickerChoiceView *choiceView = [[HorizontalPickerChoiceView alloc] initWithFrame:CGRectZero];
         
+        [choiceView setUserInteractionEnabled:NO];
         [choiceView setIndex:i];
         [choiceView setOwningPickerView:self];
-        [[choiceView layer] setContentsGravity:kCAGravityCenter];
 
         [choiceViews addObject:choiceView];
     }
@@ -283,69 +294,57 @@ static inline CGFLOAT_TYPE sScaleCeil( CGFLOAT_TYPE x, CGFLOAT_TYPE scaleFactor)
     static CGFloat sWheelSegmentSpacing = 0.9;
     static CGFloat sWheelSegmentVisible = 3;    // How many segments are visible to the left/right of 0
 
-    CATransform3D (^getTransformForBackLayer)(CGFloat) = ^(CGFloat offset) {
-        CGFloat arc     = M_PI * (2.0 * sWheelSegmentSpacing);
-        CGFloat radius  = bounds.size.width / 2;
-        CGFloat angle   = offset / sWheelSegmentCount * arc;
-
-        CATransform3D transform = CATransform3DIdentity;
-        transform.m34 = (-1 / 900);
-
-        transform = CATransform3DTranslate(transform, 0, 0, -radius);
-        transform = CATransform3DRotate(transform, angle, 0, 1, 0);
-        transform = CATransform3DTranslate(transform, 0, 0, radius + FLT_EPSILON);
-
-        return transform;
-    };
-
     void (^updateChoiceView)(HorizontalPickerChoiceView *, NSInteger) = ^(HorizontalPickerChoiceView *choiceView, NSInteger index) {
         CGFloat offset = index - (xOffset / pointsPerChoice);
 
         if ((offset < -sWheelSegmentVisible) || (offset > sWheelSegmentVisible)) {
             [choiceView setHidden:YES];
-            [choiceView removeFromSuperview];
 
         } else {
-            CALayer *layer = [choiceView layer];
-
             [choiceView setHidden:NO];
 
-            CATransform3D transform = getTransformForBackLayer(offset);
-            
-            [layer setPosition:center];
-            [layer setTransform:transform];
-
-            [_backContainer addSubview:choiceView];
-            [layer setOpacity:pow(transform.m33, 1.5) * 0.5];
-
-            if (![layer contents]) {
-                [layer setNeedsDisplay];
+            if (![[choiceView layer] contents]) {
+                [choiceView setNeedsDisplay];
+                [[choiceView layer] displayIfNeeded];
             }
+
+            CATransform3D transform = CATransform3DIdentity;
+            
+            CGFloat arc     = M_PI * (2.0 * sWheelSegmentSpacing);
+            CGFloat radius  = bounds.size.width / 2;
+            CGFloat angle   = offset / sWheelSegmentCount * arc;
+
+            transform.m34 = (-1 / 900);
+
+            transform = CATransform3DTranslate(transform, 0, 0, -radius);
+            transform = CATransform3DRotate(transform, angle, 0, 1, 0);
+            transform = CATransform3DTranslate(transform, 0, 0, radius + FLT_EPSILON);
+            
+            [[choiceView layer] setPosition:center];
+            [[choiceView layer] setTransform:transform];
+
+            if (![choiceView superview]) {
+                [_backContainer addSubview:choiceView];
+            }
+
+            [choiceView setAlpha:pow(transform.m33, 1.5) * 0.5];
         }
     };
 
-    void (^updateFrontView)(UIView *, NSInteger) = ^(UIView *frontView, NSInteger index) {
-        CALayer *layer = [frontView layer];
-
+    void (^updateFrontView)(HorizontalPickerChoiceView *, NSInteger) = ^(HorizontalPickerChoiceView *frontView, NSInteger index) {
         if (index < _numberOfChoices && index >= 0) {
             CGFloat offset = (index * pointsPerChoice) - xOffset;
             offset -= [_frontContainer frame].origin.x;
             
-            HorizontalPickerChoiceView *source = [_choiceViews objectAtIndex:index];
-
-            if (![[source layer] contents]) {
-                [[source layer] setNeedsDisplay];
-                [[source layer] displayIfNeeded];
-            }
-
-            [layer setHidden:NO];
-            [layer setContents:[[source layer] contents]];
-            [layer setContentsScale:[[source layer] contentsScale]];
-            [layer setPosition:center];
-            [layer setTransform:CATransform3DMakeTranslation(offset, 0, 0)];
+            [frontView setIndex:index];
+            [frontView setNeedsDisplay];
+            
+            [frontView setHidden:NO];
+            [[frontView layer] setPosition:center];
+            [[frontView layer] setTransform:CATransform3DMakeTranslation(offset, 0, 0)];
 
         } else {
-            [layer setHidden:YES];
+            [frontView setHidden:YES];
         }
     };
 
